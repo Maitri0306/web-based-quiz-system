@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="prj.css">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Quiz System</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .correct {
+            background-color: #4CAF50 !important;
+            color: white !important;
+            border-color: #388E3C !important;
+        }
+        .incorrect {
+            background-color: #F44336 !important;
+            color: white !important;
+            border-color: #D32F2F !important;
+        }
+        /* Custom scrollbar for options container */
+        .options-container::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .options-container::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div id="quiz-container" class="w-full max-w-lg bg-white shadow-2xl rounded-xl p-6 md:p-8 border border-gray-100">
+
+        <!-- Header -->
+        <header class="mb-6 pb-4 border-b border-gray-200 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-800">Knowledge Quiz</h1>
+            <div id="score-display" class="text-xl font-semibold text-indigo-600">Score: 0</div>
+        </header>
+
+        <!-- Question Area -->
+        <main>
+            <p id="question-number" class="text-sm font-medium text-indigo-500 mb-2"></p>
+            <h2 id="question-text" class="text-xl md:text-2xl font-semibold text-gray-900 mb-6">
+                Loading question...
+            </h2>
+
+            <!-- Options Container -->
+            <div id="options-container" class="options-container flex flex-col space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                <!-- Options buttons will be inserted here by JavaScript -->
+            </div>
+        </main>
+
+        <!-- Footer & Controls -->
+        <footer class="mt-8 pt-6 border-t border-gray-200 flex justify-end">
+            <button id="next-button"
+                class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-indigo-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled>
+                Next Question
+            </button>
+        </footer>
+
+        <!-- Final Score Modal (Hidden initially) -->
+        <div id="results-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-xl shadow-2xl p-8 max-w-sm w-full text-center transform transition-all duration-300">
+                <h3 class="text-3xl font-bold text-gray-800 mb-4">Quiz Complete!</h3>
+                <p class="text-xl text-gray-600 mb-6">Your final score is:</p>
+                <div id="final-score" class="text-6xl font-extrabold text-indigo-600 mb-8"></div>
+                <button id="restart-button"
+                    class="w-full bg-green-500 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:bg-green-600 transition duration-300">
+                    Restart Quiz
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+    const questions = [
+        {
+            question: "Which language runs in a web browser?",
+            options: ["Java", "C++", "Python", "JavaScript"],
+            answer: "JavaScript"
+        },
+        {
+            question: "What does CSS stand for?",
+            options: ["Creative Style Sheets", "Cascading Style Sheets", "Computer Style Sheets", "Colorful Style Sheets"],
+            answer: "Cascading Style Sheets"
+        },
+        {
+            question: "What is the capital of Japan?",
+            options: ["Osaka", "Tokyo", "Kyoto", "Sapporo"],
+            answer: "Tokyo"
+        },
+        {
+            question: "Which of these is a front-end framework?",
+            options: ["Node.js", "Express.js", "React", "MongoDB"],
+            answer: "React"
+        },
+        {
+            question: "What symbol is used to denote an ID selector in CSS?",
+            options: [". (dot)", "# (hash)", "* (asterisk)", ": (colon)"],
+            answer: "# (hash)"
+        }
+    ];
+
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let answered = false;
+
+    const questionNumberEl = document.getElementById('question-number');
+    const questionTextEl = document.getElementById('question-text');
+    const optionsContainerEl = document.getElementById('options-container');
+    const nextButton = document.getElementById('next-button');
+    const scoreDisplayEl = document.getElementById('score-display');
+    const resultsModal = document.getElementById('results-modal');
+    const finalScoreEl = document.getElementById('final-score');
+    const restartButton = document.getElementById('restart-button');
+
+    function loadQuestion() {
+        if (currentQuestionIndex >= questions.length) {
+            showResults();
+            return;
+        }
+
+        const currentQuestion = questions[currentQuestionIndex];
+        answered = false;
+        nextButton.disabled = true;
+
+        questionNumberEl.textContent = `Question ${currentQuestionIndex + 1} of ${questions.length}`;
+        questionTextEl.textContent = currentQuestion.question;
+
+        optionsContainerEl.innerHTML = '';
+
+        currentQuestion.options.forEach(option => {
+            const button = document.createElement('button');
+            button.textContent = option;
+            button.className = 'option-btn w-full text-left p-3 md:p-4 border-2 border-gray-300 rounded-lg text-gray-700 font-medium transition duration-200 hover:bg-indigo-50 hover:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-200';
+            button.setAttribute('data-option', option);
+            button.onclick = () => selectOption(button, option, currentQuestion.answer);
+            optionsContainerEl.appendChild(button);
+        });
+    }
+
+    function selectOption(button, option, correctAnswer) {
+        if (answered) return;
+
+        answered = true;
+        nextButton.disabled = false;
+
+        const allButtons = document.querySelectorAll('.option-btn');
+        allButtons.forEach(btn => btn.disabled = true);
+
+        if (option === correctAnswer) {
+            score++;
+            button.classList.add('correct');
+        } else {
+            button.classList.add('incorrect');
+            allButtons.forEach(btn => {
+                if (btn.getAttribute('data-option') === correctAnswer) {
+                    btn.classList.add('correct');
+                }
+            });
+        }
+
+        // ✅ Update scoreboard
+        scoreDisplayEl.textContent = `Score: ${score}`;
+    }
+
+    function nextQuestion() {
+        if (!answered) return;
+        currentQuestionIndex++;
+        loadQuestion();
+    }
+
+    function showResults() {
+        finalScoreEl.textContent = `${score} / ${questions.length}`;
+        resultsModal.classList.remove('hidden');
+    }
+
+    function restartQuiz() {
+        currentQuestionIndex = 0;
+        score = 0;
+        scoreDisplayEl.textContent = "Score: 0";
+        resultsModal.classList.add('hidden');
+        loadQuestion();
+    }
+
+    nextButton.addEventListener('click', nextQuestion);
+    restartButton.addEventListener('click', restartQuiz);
+
+    document.addEventListener('DOMContentLoaded', loadQuestion);
+</script>
+
+</body>
+</html>
